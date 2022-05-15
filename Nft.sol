@@ -5,10 +5,12 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract NFTCollectible is ERC721Enumerable, Ownable {
     using SafeMath for uint256;
     using Counters for Counters.Counter;
+    bytes32 public root;
 
     Counters.Counter private _tokenIds;
 
@@ -18,8 +20,9 @@ contract NFTCollectible is ERC721Enumerable, Ownable {
 
     string public baseTokenURI;
 
-    constructor(string memory baseURI) ERC721("NFT Collectible", "NFTC") {
+    constructor(string memory baseURI,bytes32 _root) ERC721("NFT Collectible", "NFTC") {
         setBaseURI(baseURI);
+        root = _root;
     }
 
     function reserveNFTs() public onlyOwner {
@@ -39,10 +42,10 @@ contract NFTCollectible is ERC721Enumerable, Ownable {
     function setBaseURI(string memory _baseTokenURI) public onlyOwner {
         baseTokenURI = _baseTokenURI;
     }
-
-    function mintNFTs(uint _count) public payable {
+//address to, bytes32[] memory proof
+    function mintNFTs(uint _count,bytes32[] calldata proof) public payable {
+        require(isValid(proof, keccak256(abi.encodePacked(msg.sender))), "Not a part of Allowlist");
         uint totalMinted = _tokenIds.current();
-
         require(totalMinted.add(_count) <= MAX_SUPPLY, "Not enough NFTs left!");
         require(_count >0 && _count <= MAX_PER_MINT, "Cannot mint specified number of NFTs.");
         require(msg.value >= PRICE.mul(_count), "Not enough ether to purchase NFTs.");
@@ -51,6 +54,10 @@ contract NFTCollectible is ERC721Enumerable, Ownable {
             _mintSingleNFT();
         }
     }
+  function isValid(bytes32[] calldata proof, bytes32 leaf) public view returns (bool) {
+        return MerkleProof.verify(proof, root, leaf);
+    }
+
 
     function _mintSingleNFT() private {
         uint newTokenID = _tokenIds.current();
