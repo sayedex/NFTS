@@ -15,8 +15,8 @@ contract NFTCollectible is ERC721Enumerable, Ownable {
     Counters.Counter private _tokenIds;
 
     uint public constant MAX_SUPPLY = 100;
-    uint public constant PRICE = 0.0000000000000001 ether;
-    uint public constant MAX_PER_MINT = 5;
+    uint256 public  PRICE = 0.0000000000000001 ether;
+    uint256 public  MAX_PER_MINT = 5;
 
     string public baseTokenURI;
 
@@ -39,10 +39,25 @@ contract NFTCollectible is ERC721Enumerable, Ownable {
         return baseTokenURI;
     }
 
+//only owner can call this function
+
     function setBaseURI(string memory _baseTokenURI) public onlyOwner {
         baseTokenURI = _baseTokenURI;
     }
-//address to, bytes32[] memory proof
+
+//only owner can call this function
+
+     function SetMaxmint(uint256 _newMax) public onlyOwner{
+     MAX_PER_MINT = _newMax;
+      }
+
+//only owner can call this function
+     function SetNewPrice(uint256 _PRICE) public onlyOwner{
+       PRICE = _PRICE;
+      }
+
+
+
     function mintNFTs(uint _count,bytes32[] calldata proof) public payable {
         require(isValid(proof, keccak256(abi.encodePacked(msg.sender))), "Not a part of Allowlist");
         uint totalMinted = _tokenIds.current();
@@ -54,6 +69,8 @@ contract NFTCollectible is ERC721Enumerable, Ownable {
             _mintSingleNFT();
         }
     }
+
+    //check is addresss is valid or not
   function isValid(bytes32[] calldata proof, bytes32 leaf) public view returns (bool) {
         return MerkleProof.verify(proof, root, leaf);
     }
