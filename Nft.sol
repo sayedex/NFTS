@@ -11,6 +11,8 @@ contract NFTCollectible is ERC721Enumerable, Ownable {
     using SafeMath for uint256;
     using Counters for Counters.Counter;
     bytes32 public root;
+    uint start;
+    uint end;
 
     Counters.Counter private _tokenIds;
 
@@ -23,6 +25,7 @@ contract NFTCollectible is ERC721Enumerable, Ownable {
     constructor(string memory baseURI,bytes32 _root) ERC721("NFT Collectible", "NFTC") {
         setBaseURI(baseURI);
         root = _root;
+        start=block.timestamp;
     }
 
     function reserveNFTs() public onlyOwner {
@@ -38,6 +41,22 @@ contract NFTCollectible is ERC721Enumerable, Ownable {
     function _baseURI() internal view virtual override returns (string memory) {
         return baseTokenURI;
     }
+
+//set when it will start
+
+     modifier timeIsOver{
+            require(block.timestamp>=end,"Time is up");
+            _;
+        }
+
+  function endTimer(uint period) public onlyOwner {
+            end=period+start;
+        }
+ function timeLeft() public view returns(uint){
+            return end-block.timestamp;
+        }
+
+
 
 //only owner can call this function
 
@@ -58,7 +77,7 @@ contract NFTCollectible is ERC721Enumerable, Ownable {
 
 
 
-    function mintNFTs(uint _count,bytes32[] calldata proof) public payable {
+    function mintNFTs(uint _count,bytes32[] calldata proof) public  payable timeIsOver{
         require(isValid(proof, keccak256(abi.encodePacked(msg.sender))), "Not a part of Allowlist");
         uint totalMinted = _tokenIds.current();
         require(totalMinted.add(_count) <= MAX_SUPPLY, "Not enough NFTs left!");
