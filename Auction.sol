@@ -208,6 +208,20 @@ contract Marketplace is IERC721Receiver {
         return allAuctions[_auctionIndex].currentBidPrice;
     }
 
+
+   // is sell done
+  function isSelldone(uint256 _auctionIndex)
+        public
+        view
+        returns (bool)
+    {
+          Auction storage auction = allAuctions[_auctionIndex];
+        return auction.sold;
+    }
+
+
+
+
     /**
      * Place new bid on a specific auction
      * @param _auctionIndex Index of auction
@@ -289,12 +303,20 @@ contract Marketplace is IERC721Receiver {
             NFTCollection nftCollection = NFTCollection(
             auction.addressNFTCollection
         );
+        // get ERC20 token contract
+        ERC20 paymentToken = ERC20(auction.addressPaymentToken);
         if(auction.BuyNowprice==_price){
-                nftCollection.transferNFTFrom(
+     require(nftCollection.transferNFTFrom(
                 address(this),
-                auction.currentBidOwner,
+                msg.sender,
                 _auctionIndex
-            );
+            ),"Nft trsanfer failed");
+  
+    require(
+            paymentToken.transferFrom(msg.sender,auction.creator, _price),
+            "Tranfer of token failed"
+        );
+
         }
       
      auction.sold=true;
