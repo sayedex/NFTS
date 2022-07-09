@@ -294,7 +294,7 @@ contract Marketplace is IERC721Receiver {
    require(_auctionIndex < allAuctions.length, "Invalid auction index");
 
         // Check if the auction is closed
-        
+    require(!isSelldone(_auctionIndex),"NFT sold");
        // require(!isOpen(_auctionIndex), "Auction is still open");
         //price !=0
         require(_price!=0,"zero price not allow");
@@ -325,7 +325,8 @@ contract Marketplace is IERC721Receiver {
 
     function claimNFT(uint256 _auctionIndex) external {
         require(_auctionIndex < allAuctions.length, "Invalid auction index");
-
+        ///is sold
+        require(isSelldone(_auctionIndex),"NFT not sold");
         // Check if the auction is closed
         require(!isOpen(_auctionIndex), "Auction is still open");
 
@@ -375,7 +376,8 @@ contract Marketplace is IERC721Receiver {
 
         // Check if the auction is closed
         require(!isOpen(_auctionIndex), "Auction is still open");
-
+        
+        require(isSelldone(_auctionIndex),"NFT not sold");
         // Get auction
         Auction storage auction = allAuctions[_auctionIndex];
 
@@ -405,6 +407,47 @@ contract Marketplace is IERC721Receiver {
 
         emit TokensClaimed(_auctionIndex, auction.nftId, msg.sender);
     }
+
+
+
+   // this function will allow you to sell ur nft to highest bidder
+
+  function SellTokenToBider(uint256 _auctionIndex) external {
+        require(_auctionIndex < allAuctions.length, "Invalid auction index"); // XXX Optimize
+    
+        require(!isSelldone(_auctionIndex),"NFT sold");
+        // Get auction
+        Auction storage auction = allAuctions[_auctionIndex];
+
+        // Check if the caller is the creator of the auction
+        require(
+            auction.creator == msg.sender,
+            "Tokens can be claimed only by the creator of the auction"
+        );
+
+        // Get NFT Collection contract
+        NFTCollection nftCollection = NFTCollection(
+            auction.addressNFTCollection
+        );
+        // Transfer NFT from marketplace contract
+        // to the winned of the auction
+        nftCollection.transferFrom(
+            address(this),
+            auction.currentBidOwner,
+            auction.nftId
+        );
+
+        // Get ERC20 Payment token contract
+        ERC20 paymentToken = ERC20(auction.addressPaymentToken);
+        // Transfer locked tokens from the market place contract
+        // to the wallet of the creator of the auction
+        paymentToken.transfer(auction.creator, auction.currentBidPrice);
+        auction.sold = true;  
+        emit TokensClaimed(_auctionIndex, auction.nftId, msg.sender);
+    }
+
+
+
 
     /**
      * Function used by the creator of an auction
