@@ -2,6 +2,7 @@ pragma solidity ^0.8.0;
 
 import "./ERC20.sol";
 import "./NFTCollection.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "hardhat/console.sol"; //For debugging only
 
@@ -55,10 +56,17 @@ contract Marketplace is IERC721Receiver {
     // Public event to notify that the creator of
     // an auction claimed for his money
     event TokensClaimed(uint256 auctionIndex, uint256 nftId, address claimedBy);
-
+   //sell nft to top bidder
+    event Nftselltotopbidder(uint256 auctionIndex, uint256 nftId, address claimedBy,uint256 price,bool sold);
     // Public event to notify that an NFT has been refunded to the
     // creator of an auction
     event NFTRefunded(uint256 auctionIndex, uint256 nftId, address claimedBy);
+
+     //NFT sell at Buy price..
+     event BuyPriceSell(uint256 auctionIndex,uint256 Pirce,bool sold);
+
+
+
 
     // constructor of the contract
     constructor(string memory _name) {
@@ -78,19 +86,10 @@ contract Marketplace is IERC721Receiver {
         return size > 0;
     }
 
-    /**
-     * Create a new auction of a specific NFT
-     * @param _addressNFTCollection address of the ERC721 NFT collection contract
-     * @param _addressPaymentToken address of the ERC20 payment token contract
-     * @param _nftId Id of the NFT for sale
-     * @param _initialBid Inital bid decided by the creator of the auction
-     * @param _endAuction Timestamp with the end date and time of the auction
-     */
     function createAuction(
         address _addressNFTCollection,
         address _addressPaymentToken,
         uint256 _nftId,
-        uint256 _initialBid,
         uint256 _endAuction,
         uint256 _Buynowprice
     ) external returns (uint256) {
@@ -126,9 +125,11 @@ contract Marketplace is IERC721Receiver {
             nftCollection.getApproved(_nftId) == address(this),
             "Require NFT ownership transfer approval"
         );
-
+        
         // Lock NFT in Marketplace contract
         require(nftCollection.transferNFTFrom(msg.sender, address(this), _nftId));
+   // 
+      
 
         //Casting from address to address payable
         address payable currentBidOwner = payable(address(0));
@@ -303,24 +304,29 @@ contract Marketplace is IERC721Receiver {
             NFTCollection nftCollection = NFTCollection(
             auction.addressNFTCollection
         );
+
         // get ERC20 token contract
         ERC20 paymentToken = ERC20(auction.addressPaymentToken);
-        if(auction.BuyNowprice==_price){
-     require(nftCollection.transferNFTFrom(
+       require(auction.BuyNowprice==_price,"price not same");
+       require(nftCollection.transferNFTFrom(
                 address(this),
                 msg.sender,
-                _auctionIndex
+                auction.nftId
+               
             ),"Nft trsanfer failed");
-  
-    require(
+
+        require(
             paymentToken.transferFrom(msg.sender,auction.creator, _price),
             "Tranfer of token failed"
         );
 
-        }
-      
-     auction.sold=true;
-
+    
+auction.sold=true;
+emit BuyPriceSell(
+_auctionIndex,
+_price,
+true
+);
   }
 
     function claimNFT(uint256 _auctionIndex) external {
@@ -413,12 +419,13 @@ contract Marketplace is IERC721Receiver {
    // this function will allow you to sell ur nft to highest bidder
 
   function SellTokenToBider(uint256 _auctionIndex) external {
+
         require(_auctionIndex < allAuctions.length, "Invalid auction index"); // XXX Optimize
-    
+         
         require(!isSelldone(_auctionIndex),"NFT sold");
         // Get auction
         Auction storage auction = allAuctions[_auctionIndex];
-
+         require(auction.currentBidPrice!=0,"zero price not allow");
         // Check if the caller is the creator of the auction
         require(
             auction.creator == msg.sender,
@@ -443,7 +450,13 @@ contract Marketplace is IERC721Receiver {
         // to the wallet of the creator of the auction
         paymentToken.transfer(auction.creator, auction.currentBidPrice);
         auction.sold = true;  
-        emit TokensClaimed(_auctionIndex, auction.nftId, msg.sender);
+
+        emit Nftselltotopbidder(
+    _auctionIndex,
+         auction.nftId,
+       msg.sender,
+       auction.currentBidPrice,
+       true);
     }
 
 
